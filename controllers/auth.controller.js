@@ -37,6 +37,8 @@ const sistemaCofigurado = async (req, res) => {
 
 const primeiroAcesso = async (req, res) => {
   try {
+    console.log('BODY RECEBIDO:', req.body);
+
     const { nomeEscola, enderecoEscola, nomeAdmin, emailAdmin, senhaAdmin } = req.body;
 
     if (!nomeEscola || !nomeAdmin || !emailAdmin || !senhaAdmin) {
@@ -49,52 +51,36 @@ const primeiroAcesso = async (req, res) => {
       return res.status(403).json({ mensagem: 'Sistema já configurado.' });
     }
 
-    const client = await pool.connect();
+    // Cria a escola primeiro
+    const escolaResult = await pool.query(
+      `INSERT INTO escolas (nome, endereco) VALUES ($1, $2) RETURNING id`,
+      [nomeEscola, enderecoEscola || null]
+    );
+    const escolaId = escolaResult.rows[0].id;
 
-    try {
-      await client.query('BEGIN');
+    // Cria o admin usando o service existente
+    const resultado = await usuariosService.create({
+      nome:      nomeAdmin,
+      email:     emailAdmin,
+      senha:     senhaAdmin,
+      tipo:      'admin',
+      escola_id: escolaId,
+    });
 
-      // Cria a escola
-      const escolaResult = await client.query(
-        `INSERT INTO escolas (nome, endereco) VALUES ($1, $2) RETURNING id`,
-        [nomeEscola, enderecoEscola || null]
-      );
-      const escolaId = escolaResult.rows[0].id;
-
-      // Cria o admin vinculado à escola
-      const resultado = await usuariosService.create({
-        nome:      nomeAdmin,
-        email:     emailAdmin,
-        senha:     senhaAdmin,
-        tipo:      'admin',
-        escola_id: escolaId,
-      });
-
-      if (resultado.erro) {
-        await client.query('ROLLBACK');
-        return res.status(resultado.status).json({ mensagem: resultado.mensagem });
-      }
-
-      await client.query('COMMIT');
-
-      return res.status(201).json({
-        mensagem: 'Sistema configurado com sucesso!',
-        escolaId,
-        usuario: resultado.dados
-      });
-
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+    if (resultado.erro) {
+      await pool.query('DELETE FROM escolas WHERE id = $1', [escolaId]);
+      return res.status(resultado.status).json({ mensagem: resultado.mensagem });
     }
 
-  } catch (error) {
-    return res.status(500).json({
-      mensagem: 'Erro ao configurar sistema.',
-      erro: error.message
+    return res.status(201).json({
+      mensagem: 'Sistema configurado com sucesso!',
+      escolaId,
+      usuario: resultado.dados
     });
+
+  } catch (error) {
+    console.error('ERRO PRIMEIRO ACESSO:', error.message);
+    return res.status(500).json({ mensagem: 'Erro ao configurar sistema.', erro: error.message });
   }
 };
 
