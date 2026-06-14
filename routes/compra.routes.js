@@ -1,10 +1,11 @@
 const { Router } = require('express');
 const compraController = require('../controllers/compra.controller');
+const { autenticar } = require('../middleware/auth.middleware');
 
 const router = Router();
 
-router.post('/', compraController.createCompra);
-router.get('/', compraController.listCompras);
-router.get('/:id', compraController.CompraById);
+router.post('/', autenticar, compraController.createCompra);
+router.get('/', autenticar, compraController.listCompras);
+router.get('/:id', autenticar, compraController.CompraById);
 
 module.exports = router;
