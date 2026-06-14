@@ -26,6 +26,15 @@ const create = async ({
     };
   }
 
+  // Bloqueia entrada manual — deve ser feita via compras
+if (tipo === 'entrada' && !compra_id) {
+  return {
+    erro: true,
+    status: 400,
+    mensagem: 'Entradas no estoque devem ser realizadas pelo módulo de Compras.'
+  };
+}
+
   if (Number(quantidade) <= 0) {
     return {
       erro: true,
