@@ -27,7 +27,7 @@ const login = async (req, res) => {
 
 const sistemaCofigurado = async (req, res) => {
   try {
-    const resultado = await pool.query('SELECT id FROM escolas LIMIT 1');
+    const resultado = await pool.query('SELECT id FROM usuarios LIMIT 1');
     return res.json({ configurado: resultado.rows.length > 0 });
   } catch (error) {
     return res.status(500).json({ mensagem: 'Erro ao verificar sistema.' });
